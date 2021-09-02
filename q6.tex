@@ -1,0 +1,123 @@
+%%% Question 6 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+\question This question is about type-level programming. Haskell's type system is sufficiently expressive to allow us to implement an expression language in the types. For this question, you may assume that all of GHC's language extensions are available to you. You may also assume that natural numbers and type-level addition are defined as follows:
+\begin{minted}{haskell}
+data Nat = Zero | Succ Nat
+
+type family Add (n :: Nat) (m :: Nat) :: Nat where
+    Add 'Zero y = y
+    Add ('Succ x) y = 'Succ ('Add x y)
+\end{minted}
+For convenience, you can use type-level numeric literals so that e.g. \haskellIn{'Succ 'Zero} can equally be written as \haskellIn{1}.
+
+\begin{parts}
+    \part[3] Define a closed type family
+    \begin{minted}{haskell}
+If :: Nat -> k -> k -> k
+    \end{minted}
+    which implements a type-level if expression. If the first argument, of kind \haskellIn{Nat}, is \haskellIn{'Zero} the third argument (the false branch) should be returned. Otherwise the second argument (the true branch) should be returned. \droppoints 
+
+    \begin{solution}
+        \emph{Application.}
+        \begin{minted}{haskell}
+type family If (n :: Nat) (t :: k) (f :: k) :: k where
+    If 'Zero t f = f 
+    If x t f = t
+        \end{minted}
+    \end{solution}
+
+    \part[4] \label{eval} We define a data type to represent a simple expression language:
+    \begin{minted}{haskell}
+data Expr = Val Nat
+          | Plus Expr Expr
+          | Cond Expr Expr Expr
+    \end{minted}
+    Define a closed type family
+    \begin{minted}{haskell}
+Eval :: Expr -> Nat
+    \end{minted}
+    which evaluates a type of kind \haskellIn{Expr} to a corresponding \haskellIn{Nat} type so that, for example, \haskellIn{'Cond ('Val 1) ('Plus ('Val 2) ('Val 4)) ('Val 3)} evaluates to \haskellIn{6}. The semantics for \haskellIn{'Cond} are the same as for \haskellIn{If}. \droppoints 
+
+    \begin{solution}
+        \emph{Application.}
+        \begin{minted}{haskell}
+type family Eval (e :: Expr) :: Nat where
+    Eval ('Val n) = n
+    Eval ('Plus l r) = Add (Eval l) (Eval r)
+    Eval ('Cond c t f) = If (Eval c) (Eval t) (Eval f)
+        \end{minted}
+    \end{solution}
+
+    \part[10] For Part \ref{eval} we simply evaluated expressions recursively. A different approach to this is to simplify \emph{one sub-expression at a time}. Define a closed type family
+    \begin{minted}{haskell}
+Step :: Expr -> Expr
+    \end{minted}
+    which implements call-by-value, left-to-right semantics. For example, \haskellIn{Step ('Plus ('Plus ('Val 0) ('Val 1)) ('Plus ('Val 2) ('Val 3)))} \linebreak should result in \haskellIn{'Plus ('Val 1) ('Plus ('Val 2) ('Val 3))}. That is:
+    \begin{itemize}
+        \item For \haskellIn{'Plus}, we should first evaluate the first argument by one step. Only if that is already a normal form, then we should evaluate the second argument by one step. Only if both arguments are already normal forms should we perform addition.
+        \item Likewise for \haskellIn{'Cond} and its first argument, although the true and false branches should not be evaluated strictly -- if the first argument to \haskellIn{'Cond} is a normal form, then the appropriate branch should be returned as is.
+        \item \haskellIn{'Val} is already a normal form so that \haskellIn{Step ('Val 4)} leaves the expression unchanged as \haskellIn{'Val 4}. \droppoints
+    \end{itemize} 
+
+    \begin{solution}
+        \emph{Application. 1 mark for the head. 1 mark for Val. 4 marks for Plus. 4 marks for Cond. }
+        \begin{minted}{haskell}
+type family Step (e :: Expr) :: Expr where
+    Step (Val n) = Val n
+    Step (Plus (Val x) (Val y)) = Val (Add x y)
+    Step (Plus (Val x) e1) = Plus (Val x) (Step e1)
+    Step (Plus e0 e1) = Plus (Step e0) e1
+    Step (Cond (Val Zero) t f) = f
+    Step (Cond (Val x) t f) = t
+    Step (Cond e t f) = Cond (Step e) t f
+        \end{minted}
+    \end{solution}
+
+    \pagebreak
+    \part We now wish to extend our expression language with variables. We modify the \haskellIn{Expr} kind with a new constructor as follows:
+    \begin{minted}{haskell}
+data Expr = ... | Var Nat
+    \end{minted}
+    Variable names are represented by numeric indices.
+    \begin{subparts}
+        \subpart[4] Define a closed type family 
+        \vspace*{0.2cm}
+        \begin{minted}{haskell}
+Index :: [k] -> Nat -> k
+        \end{minted}
+        \vspace*{0.2cm}
+        which looks up the element in a type-level list at the specified index. For example, \haskellIn{Index '[1,2,3] 1} should evaluate to \haskellIn{2}. \droppoints 
+
+        \begin{solution}
+            \emph{Application.}
+            \begin{minted}{haskell}
+type family Index (xs :: [k]) (i :: Nat) :: k where
+    Index (x ': xs) Zero = x
+    Index (x ': xs) (Succ n) = Index xs n
+            \end{minted}
+        \end{solution}
+        
+        \subpart[4] Modify the \haskellIn{Step} type family to
+        \vspace*{0.2cm}
+        \begin{minted}{haskell}
+Step :: Expr -> [Expr] -> Expr
+        \end{minted}
+        \vspace*{0.2cm}
+        and add suitable case(s) for \haskellIn{'Var} so that e.g. \haskellIn{Step ('Var 1) '['Val 4, 'Var 0]} evaluates to \haskellIn{'Var 0}. \droppoints 
+
+        \begin{solution}
+            \emph{Application.}
+            \begin{minted}{haskell}
+type family Step (e :: Expr) (env :: [Expr]) :: Expr where
+    Step (Val n) env = Val n
+    Step (Var i) env = Index env i
+    Step (Plus (Val x) (Val y)) env = Val (Add x y)
+    Step (Plus (Val x) e1) env = Plus (Val x) (Step e1 env)
+    Step (Plus e0 e1) env = Plus (Step e0 env) e1
+    Step (Cond (Val Zero) t f) env = f
+    Step (Cond (Val x) t f) env = t
+    Step (Cond e t f) env = Cond (Step e env) t f
+            \end{minted}
+        \end{solution}
+    \end{subparts}    
+\end{parts}
+

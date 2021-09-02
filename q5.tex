@@ -1,0 +1,120 @@
+
+%%% Question 5 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+\question This question is about functors, applicative functors, and monads. Consider the following data type definition in Haskell. You may assume that functor, applicative functor, and monad laws have been proved for all \haskellIn{Functor} instances except your own. You may \textbf{not} make use of GHC extensions such as \texttt{\small DeriveFunctor}. % or maybe pairs?
+\begin{minted}{haskell}
+data UwU w u = MkUwU u (w u)
+\end{minted}
+\begin{parts} 
+    \part[7] Define a suitable instance of the \haskellIn{Functor} type class for the \haskellIn{UwU} type, adding suitable super-class constraints if necessary, and prove that your instance obeys \emph{both} functor laws. \droppoints 
+    
+    \begin{solution}
+    Instance (2 marks):
+    \begin{verbatim}
+    instance Functor w => Functor (UwU w) where 
+      fmap f (MkUwU u w) = MkUwU (f u) (fmap f w)
+    \end{verbatim}
+    Proofs (2 marks for identity, 3 marks for fusion):
+    \begin{verbatim}
+    fmap id (MkUwU u w)
+    = { applying fmap }
+    MkUwU (id u) (fmap id w)
+    = { applying id }
+    MkUwU u (fmap id w)
+    = { identity law for type w }
+    MkUwU u (id w)
+    = { applying id }
+    MkUwU u w
+    = { unapplying id }
+    id (MkUwU u w)
+    
+    fmap (f.g) (MkUwU u w)
+    = { applying fmap }
+    MkUwU ((f.g) u) (fmap (f.g) w)
+    = { fusion law for type w }
+    MkUwU ((f.g) u) (fmap f (fmap g w))
+    = { applying function composition }
+    MkUwU (f (g u)) (fmap f (fmap g w))
+    = { unapplying fmap }
+    fmap f (MkUwU (g u) (fmap g w))
+    = { unapplying fmap }
+    fmap f (fmap g (MkUwU u w))
+    = { unapplying function composition }
+    (fmap f . fmap g) (MkUwU u w)
+    \end{verbatim}
+    \end{solution}
+    
+    \part[18] Define a suitable instance of the \haskellIn{Applicative} type class for the \haskellIn{UwU} type, adding suitable super-class constraints if necessary, and prove that your instance obeys \emph{all four} applicative functor laws. \droppoints
+    \begin{solution}
+    Instance (4 marks):
+    \begin{verbatim}
+instance Applicative w => Applicative (UwU w) where 
+  pure x = MkUwU x (pure x) 
+  (MkUwU f w0) <*> (MkUwU x w1) = 
+    MkUwU (f x) (w0 <*> w1)
+    \end{verbatim}
+    Proofs (3 marks for Identity, 3 marks for Homomorphism, 4 for Interchange, 4 for Composition):
+    \begin{verbatim}
+    Identity: pure id <*> v = v 
+    pure id <*> (MkUwU u w) 
+    = { applying pure }
+    MkUwU id (pure id) <*> (MkUwU u w) 
+    = { applying <*> }
+    MkUwU (id u) (pure id <*> w)
+    = { identity law for type w }
+    MkUwU (id u) w
+    = { applying id }
+    MkUwU u w
+    
+    Homomorphism: pure f <*> pure x = pure (f x)
+    pure f <*> pure x 
+    = { applying pure twice } 
+    MkUwU f (pure f) <*> MkUwU x (pure x) 
+    = { applying <*> }
+    MkUwU (f x) (pure f <*> pure x)
+    = { homomorphism law for type w }
+    MkUwU (f x) (pure (f x))
+    = { unapplying pure }
+    pure (f x)
+    
+    Interchange: u <*> pure y = pure ($ y) <*> u 
+    MkUwU u w <*> pure y 
+    = { applying pure }
+    MkUwU u w <*> MkUwu y (pure y)
+    = { applying <*> }
+    MkUwU (u y) (w <*> pure y)
+    = { interchange law for w }
+    MkUwU (u y) (pure ($ y) <*> w)
+    = { unapplying $ }
+    MkUwU (($ y) u) (pure ($ y) <*> w)
+    = { unapplying <*> }
+    MkUwU ($ y) (pure ($ y)) <*> MkUwU u w
+    = { unapplying pure }
+    pure ($ y) <*> MkUwU u w
+    
+Composition: 
+  pure (.) <*> u <*> v <*> w = u <*> (v <*> w)
+
+  pure (.) <*> MkUwU a x <*> 
+  MkUwU b y <*> MkUwU c z
+= { applying pure }
+  MkUwU (.) (pure (.)) <*> MkUwU a x <*> 
+  MkUwU b y <*> MkUwU c z
+= { applying <*> }
+  MkUwU ((.) a) (pure (.) <*> x) <*>
+  MkUwU b y <*> MkUwU c z
+= { applying <*> }
+  MkUwU ((.) a b) (pure (.) <*> x <*> y) <*>
+  MkUwU c z
+= { applying <*> }
+  MkUwU ((.) a b c) (pure (.) <*> x <*> y <*> z)
+= { composition law for type w }
+  MkUwU ((.) a b c) (x <*> (y <*> z))
+= { applying function composition }
+  MkUwU (a (b c)) (x <*> (y <*> z))
+= { unapplying <*> }
+  MkUwU a x <*> MkUwU (b c) (y <*> z)
+= { unapplying <*> }
+  MkUwU a x <*> (MkUwU b y <*> MkUwU c z)
+    \end{verbatim}
+    \end{solution}
+\end{parts}

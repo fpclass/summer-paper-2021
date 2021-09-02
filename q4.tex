@@ -1,0 +1,182 @@
+\allowdisplaybreaks
+%%% Question 4 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+\question This question is about equational reasoning. 
+\begin{parts}
+    \part[4] Suppose that the \haskellIn{length} function is defined as:
+    \begin{minted}{haskell}
+    length :: [a] -> Int 
+    length []     = 0 
+    length (x:xs) = 1 + length xs
+    \end{minted}
+    Consider the following well known property which states that the \haskellIn{length} of two combined lists is the same as the sum of the individual lists' lengths:
+    \begin{center}
+        \haskellIn{length (xs ++ ys) == length xs + length ys}
+    \end{center}
+    Prove this property. You may assume standard properties of arithmetic. \droppoints 
+    
+    \begin{solution}
+        \emph{Application.} 1 mark for the base case, 3 marks for the inductive step (in particular, 1 mark for the associativity step)
+\begin{verbatim}
+  length ([] ++ ys) 
+= { applying ++ }
+  length ys 
+= { left identity of + }
+  0 + length ys
+= { unapplying length }
+  length [] + length ys
+
+  length ((x:xs) ++ ys)
+= { applying ++ }
+  length (x : (xs ++ ys))
+= { applying length }
+  1 + length (xs++ys)
+= { induction hypothesis }
+  1 + (length xs + length ys)
+= { associativity of + }
+  (1 + length xs) + length ys
+= { unapplying length }
+  length (x:xs) + length ys
+\end{verbatim}
+    \end{solution}
+    
+    \part[10] For a list of length $n$, there are $2^n$ many subsequences. We can describe this property using Haskell functions as:
+    \begin{center}
+        \haskellIn{length (subsequences xs) = 2^(length xs)}
+    \end{center}
+    You may assume that \haskellIn{subsequences} is defined as follows:
+    \begin{minted}{haskell}
+    subsequences :: [a] -> [[a]]
+    subsequences [] = [[]]
+    subsequences (x:xs) = ys ++ map (x:) ys
+      where ys = subsequences xs
+    \end{minted}
+    With the help of the previous property, standard properties of arithmetic, and any additional lemma(s) you need, which must also be proved, prove this property. \droppoints
+    
+    \begin{solution}
+        \emph{Application.}
+        We first need to prove a lemma (1 mark for the base case and 3 marks for the inductive step):
+        \begin{center}
+            \haskellIn{length xs == length (map f xs)}
+        \end{center}
+        The proof is by induction on \texttt{\small xs}:
+\begin{verbatim}
+  length [] 
+= { unapplying map }
+  length (map f [])
+
+  length (x:xs)
+= { applying length }
+  1 + length xs 
+= { induction hypothesis }
+  1 + length (map f xs)
+= { unapplying length }
+  length (f x : map f xs)
+= { unapplying map }
+  length (map f (x:xs))
+\end{verbatim}
+        Using this lemma, the previously proved property about length and append, and standard arithmetic properties, we can then prove the property about subsequences (2 marks for the base case and 4 marks for the inductive step):
+\begin{verbatim}
+Proof by induction on xs.
+
+Base case: length (subsequences []) = 2^(length [])
+  length (subsequences [])
+= { applying subsequences }
+  length [[]]
+= { applying length }
+  1 
+= { arithmetic }
+  2^1
+= { unapplying length }
+  2^(length [])
+
+Inductive step: 
+    length (subsequences (x:xs)) = 2^(length (x:xs))
+    
+  length (subsequences (x:xs))
+= { applying subsequences }
+  length ( subsequences xs ++ 
+           map (x:) (subsequences xs))
+= { length property }
+  length (subsequences xs) 
+  + length (map (x:) (subsequences xs))
+= { lemma }
+  length (subsequences xs) + length (subsequences xs)
+= { arithmetic }
+  2 * length (subsequences xs)
+= { induction hypothesis }
+  2 * 2^(length xs)
+= { arithmetic }
+  2^(1+length xs)
+= { unapplying length }
+  2^(length (x:xs))
+\end{verbatim}
+    \end{solution}
+    
+    \part Functions form a semigroup if their co-domain is a semigroup and a monoid if their co-domain is a monoid:  
+\begin{minted}{haskell}
+instance Semigroup b => Semigroup (a -> b) where
+    (<>) f g = \x -> f x <> g x
+
+instance Monoid b => Monoid (a -> b) where 
+    mempty = \x -> mempty 
+\end{minted}
+    Prove that \emph{all} semigroup and monoid laws hold for these instances of the \haskellIn{Semigroup} and \haskellIn{Monoid} type classes.
+    \begin{subparts}
+        \subpart[3] Right identity: \haskellIn{f <> mempty = f}  \droppoints
+        
+        \begin{solution}
+            \emph{Application.}
+\begin{verbatim}
+  f <> mempty
+= { applying <> }
+  \x -> f x <> mempty x
+= { applying mempty }
+  \x -> f x <> mempty
+= { right identity law for type b }
+  \x -> f x
+= { eta-conversion }
+  f
+\end{verbatim}
+        \end{solution}
+        
+        \subpart[3] Left identity: \haskellIn{mempty <> f = f} \droppoints
+        
+        \begin{solution}
+            \emph{Application.}
+\begin{verbatim}
+  mempty <> f
+= { applying mempty }
+  \x -> mempty x <> f x
+= { applying mempty }
+  \x -> mempty <> f x
+= { left identity law for type b }
+  \x -> f x
+= { eta-conversion }
+  f
+\end{verbatim}
+        \end{solution}
+        
+        \subpart[5] Associativity: \haskellIn{f <> (g <> h) = (f <> g) <> h}  \droppoints
+        
+        \begin{solution}
+            \emph{Application.}
+\begin{verbatim}
+  f <> (g <> h)
+= { applying <> }
+  \x -> f x <> ((g <> h) x)
+= { applying <> }
+  \x -> f x <> ((\y -> g y <> h y) x)
+= { beta-reduction }
+  \x -> f x <> (g x <> h x)
+= { associativity for type b }
+  \x -> (f x <> g x) <> h x
+= { beta-reduction }
+  \x -> (\y -> f y <> g y) x <> h x
+= { unapplying <> }
+  \x -> (f <> g) x <> h x
+= { unapplying <> }
+  (f <> g) <> h
+\end{verbatim}
+        \end{solution}
+    \end{subparts}
+\end{parts}

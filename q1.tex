@@ -1,0 +1,137 @@
+%%% Question 1 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+\question This question is about functional programming as a programming paradigm.
+\begin{parts}
+\part Reduce all of the following Haskell expressions to normal forms. Your answers \emph{must} include all reduction steps. No marks are awarded for answers which just state the normal form.
+\begin{subparts}
+    \subpart[2] \haskellIn{([tail, drop 4, take 2] !! 1) "hope"} \droppoints
+    \begin{solution} \emph{Comprehension/Application.} For all parts of this question: 2 marks for a full, complete trace. 1 mark if there is one \emph{minor} error. 0 marks otherwise.
+\begin{verbatim}
+   ([tail, drop 4, take 2] !! 1) "hope"
+=> ([drop 4, take 2] !! 0) "hope"
+=> drop 4 "hope"
+=> drop 3 "ope"
+=> drop 2 "pe"
+=> drop 1 "e"
+=> drop 0 ""
+=> ""
+\end{verbatim}
+\end{solution}
+    \subpart[2] \haskellIn{map (+) [1, 2, 3]} \droppoints
+    \begin{solution} \emph{Comprehension/Application.} 
+\begin{verbatim}
+   map (+) [1, 2, 3]
+=> ((+) 1) : map (+) [2, 3]
+=> ((+) 1) : ((+) 2) : map (+) [3]
+=> ((+) 1) : ((+) 2) : ((+) 3) : map (+) []
+=> ((+) 1) : ((+) 2) : ((+) 3) : []
+== [(+) 1, (+) 2, (+) 3]
+\end{verbatim}
+    \end{solution}
+    \subpart[2] \haskellIn{if True && x then (\x -> x) (\x -> x) else y} \droppoints
+    \begin{solution} \emph{Comprehension/Application.} 
+\begin{verbatim}
+   if True && x then (\x -> x) (\x -> x) else y
+-- the only redex is in the true branch
+=> if True && x then (\x -> x) else y
+\end{verbatim}
+    \end{solution}
+    \subpart[2] \haskellIn{map ($ x) $ drop 1 [even, odd, not . even]}  \droppoints
+    \begin{solution} \emph{Comprehension/Application.} 
+\begin{verbatim}
+   map ($ x) $ drop 1 [even, odd, not . even]
+=> map ($ x) $ drop 0 [odd, not . even]
+=> map ($ x) [odd, not . even]
+=> ($ x) odd : map ($ x) [not . even]
+=> ($ x) odd : ($ x) (not . even) : map ($ x) []
+=> ($ x) odd : ($ x) (not . even) : []
+== [($ x) odd, ($ x) (not . even)]
+== [odd $ x, (not . even) $ x]
+== [odd x, (not . even) x]
+\end{verbatim}
+    \end{solution}
+    \subpart[2] \haskellIn{foldr (\x r -> (.) not x : r) [] [not, (&&) True]} \droppoints
+    \begin{solution} \emph{Comprehension/Application.} 
+\begin{verbatim}
+   foldr (\x r -> (.) not x : r) [] [not, (&&) True]
+=> (\x r -> (.) not x : r) not 
+      (foldr (\x r -> (.) not x : r) [] [(&&) True])
+=> (\r -> (.) not not : r) 
+      (foldr (\x r -> (.) not x : r) [] [(&&) True])
+=> (\r -> (.) not not : r) 
+      ((\x r -> (.) not x : r) ((&&) True) 
+      (foldr (\x r -> (.) not x : r) [] []))
+=> (\r -> (.) not not : r) 
+      ((\x r -> (.) not x : r) ((&&) True) [])
+=> (\r -> (.) not not : r) 
+     ((\r -> (.) not ((&&) True) : r) [])
+=> (\r -> (.) not not : r) 
+     ((.) not ((&&) True) : [])
+=> ((.) not not : ((.) not ((&&) True) : []))
+== [not . not, not . ((&&) True)]
+\end{verbatim}
+    \end{solution}
+\end{subparts}
+\part Consider the following definition of \haskellIn{concatMap}, which combines the behaviour of the \haskellIn{concat} and \haskellIn{map} functions into one function:
+\begin{minted}{haskell}
+concatMap :: (a -> [b]) -> [a] -> [b]
+concatMap _ []     = []
+concatMap f (x:xs) = f x ++ concatMap f xs
+\end{minted}
+\begin{subparts}
+    \subpart[4] \haskellIn{concatMap} above is defined in terms of explicit recursion. Define an equivalent function \haskellIn{concatMap'} in terms of a single call to \haskellIn{foldr} with suitable arguments so that it is not explicitly recursive. \droppoints
+    \begin{solution} \emph{Application.} 
+\begin{minted}{haskell}
+concatMap' :: (a -> [b]) -> [a] -> [b]
+concatMap' f = foldr (\x r -> f x ++ r) []
+\end{minted}
+    \end{solution}
+    \subpart[6] Prove that your definition of \haskellIn{concatMap'} is equivalent to the provided definition of \haskellIn{concatMap}:
+
+    \vspace*{0.2cm}
+
+    $\forall f~::~a \to \hslist{b},~\mathit{xs}~::~\hslist{a} \quad . \quad \mathit{concatMap}~f~\mathit{xs} = \mathit{concatMap'}~f~\mathit{xs}$ \droppoints
+    \begin{solution} \emph{Application.} 2 marks for the base case and 4 for the inductive case.
+\begin{verbatim}
+  concatMap f []
+= {applying concatMap}
+  []
+= {unapplying foldr}
+  foldr (\x r -> f x ++ r) [] []
+= {unapplying concatMap'} 
+  concatMap' f []
+
+  concatMap f (x:xs)
+= {applying concatMap}
+  f x ++ concatMap f xs 
+= {induction hypothesis}
+  f x ++ concatMap' f xs 
+= {applying concatMap'}
+  f x ++ foldr (\x r -> f x ++ r) [] xs 
+= {unapplying foldr}
+  foldr (\x r -> f x ++ r) [] (x:xs)
+= {unapplying concatMap'}
+  concatMap' f (x:xs)
+\end{verbatim} 
+    \end{solution}
+    \vspace*{0.2cm}
+    \subpart[5] Suppose that we now want a function which combines the behaviours of \haskellIn{mapM} and \haskellIn{concat}, \emph{i.e.} a function a following type:
+    
+    \vspace*{0.2cm}
+
+\begin{minted}{haskell}
+concatMapM :: Applicative f => (a -> f [b]) -> [a] -> f [b]
+\end{minted}
+
+    \vspace*{0.2cm}
+
+    Implement this function in terms of a single call to \haskellIn{foldr} with suitable arguments. \droppoints
+    \begin{solution} \emph{Application.}
+\begin{minted}{haskell}
+concatMapM 
+  :: Applicative f => (a -> f [b]) -> [a] -> f [b]
+concatMapM f 
+  = foldr (\x r -> (++) <$> f x <*> r) (pure [])
+\end{minted}
+    \end{solution}
+\end{subparts}
+\end{parts}

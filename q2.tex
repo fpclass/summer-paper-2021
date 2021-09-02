@@ -1,0 +1,116 @@
+%%% Question 2 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+\question This question is about recursive and higher-order functions. 
+\begin{parts}
+
+\part[3] Suppose that you are playing a card game. All cards have a strength, which we can represent as a value of type \haskellIn{Int}. A hand of cards can therefore be represented as a value of type \haskellIn{[Int]}. The strength of a hand is determined by the card with the greatest strength in it. Given a hand $A$ with some number of cards $n$ and some other number $k$ so that $1 \leq k \leq n$, we want to determine the sum of the strengths of all hands of size $k$ that can be assembled using only cards from $A$. To begin, define a function 
+\vspace*{0.2cm}
+\begin{minted}{haskell}
+ofSize :: Int -> [a] -> [[a]]
+\end{minted}
+\vspace*{0.2cm}
+which calculates all subsequences of a particular length. For example, calling \haskellIn{ofSize 3 [2, 6, 2, 8]} should evaluate to \haskellIn{[[2, 6, 2], [2, 6, 8], [2, 2, 8], [6, 2, 8]]}. \droppoints
+
+\begin{solution}
+\emph{Application.}
+\begin{minted}{haskell}
+ofSize :: Int -> [a] -> [[a]]
+ofSize k xs = 
+  [ys | ys <- subsequences xs, length ys == k]
+\end{minted}
+\end{solution}
+
+\part[3] With the help of \haskellIn{ofSize}, define a function
+\vspace*{0.2cm}
+\begin{minted}{haskell}
+solve :: Int -> [Int] -> Int
+\end{minted}
+\vspace*{0.2cm}
+which finds a solution for the problem. For example, \haskellIn{solve 3 [2,6,2,8]} should evaluate to \haskellIn{30} since $8 + 8 + 8 + 6 = 30$. \droppoints 
+
+\begin{solution}
+\emph{Application.}
+\begin{minted}{haskell}
+solve :: Int -> [Int] -> Int
+solve k = sum . map maximum . ofSize k
+\end{minted}
+\end{solution}
+
+\part[10] Solving this problem by explicitly finding all hands of the desired size as you have done for \haskellIn{ofSize} is an easy solution for this problem, but may be inefficient since there are $2^n$ subsequences to consider for a hand of size $n$. A better solution would never generate the hands of size $k$ to begin with. Instead we can calculate how many times each element of the input hand determines the strength of the resulting, $k$-sized hands. This can be accomplished by noting that the strongest card in a given hand will appear as many times as possible in the $k$-sized hands, followed by the next strongest card, and so on. For example, if the given hand is \haskellIn{[9,8,6,2,1]} and $k = 4$, then \haskellIn{9} appears in 4 $k$-sized hands. This can be calculated as the binomial coefficient $\binom{4}{3}$ since there are four cards, other than \haskellIn{9}, to choose from and we need to choose three more cards to make up a hand of size $k = 4$. The next strongest card \haskellIn{8} appears in $\binom{3}{3}$ $k$-sized hands. As a reminder, the binomial coefficient is defined as:
+\begin{displaymath}
+\binom{n}{k} = \frac{n!}{k!(n-k)!}
+\end{displaymath}
+Define a function
+\begin{minted}{haskell}
+calculate :: Int -> [Int] -> Int
+\end{minted}
+which, given $k$ and the cards in $A$ in descending order as arguments, should return the solution for the problem \emph{without} explicitly generating any of the $k$-sized hands. You should define any helper functions you need that are not in the standard library. \droppoints
+
+\begin{solution}
+    \emph{Application. 10 marks for a full, correct solution. 8 marks for a solution with minor mistakes or missing binomial coefficient function. 6 marks with both errors. 4 marks for a serious attempt with major errors. 2 marks for some attempt. 0 marks for no attempt. }
+\begin{minted}{haskell}
+bicoeff :: Int -> Int -> Int
+bicoeff n m = fac n `div` (fac m * fac (n - m))
+    where fac x = product [1..x]
+
+calculate :: Int -> [Int] -> Int
+calculate k xs = go (len-1) (k-1) xs
+    where len = length xs
+
+          go _ _ [] = 0
+          go n m (x:xs)
+            | n == m = x
+            | otherwise = bicoeff n m * x + go (n-1) m xs
+\end{minted}
+\end{solution}
+
+\pagebreak
+\part[4] Complete the definition of
+\begin{minted}{haskell}
+calculateAll :: Foldable f => f (Int, [Int]) -> Int
+calculateAll = foldr ??? 0
+\end{minted}
+by replacing the \haskellIn{???} with a suitable argument so that, for example, evaluating \haskellIn{calculateAll [(3, [2,6,2,8]), (4, [9,8,6,2,1])]} results in \haskellIn{44}. I.e. it finds the problem instance in the given data structure that results in the greatest overall strength. \droppoints
+
+\begin{solution}
+    \emph{Application.}
+\begin{minted}{haskell}
+calculateAll :: Foldable f => f (Int, [Int]) -> Int
+calculateAll = foldr (\(k,xs) r -> max r (solve k xs)) 0
+\end{minted}
+\end{solution}
+
+\part[5] Write a Haskell program
+\begin{minted}{haskell}
+main :: IO ()
+\end{minted}
+which reads a problem specification from the standard input. An example run of the program is shown below where lines starting with \haskellIn{>} represent standard output and those starting with \haskellIn{<} input from the user.
+\begin{minted}{text}
+> Enter k:
+< 3
+> Enter size of A:
+< 4
+> Enter elements of A:
+< 2
+< 6
+< 2
+< 8
+> The solution is 30.
+\end{minted}
+The \haskellIn{>} and \haskellIn{<} symbols should not be included in the actual program output/input. \droppoints
+
+\begin{solution}
+    \emph{Application.}
+\begin{minted}{haskell}
+program :: IO ()
+program = do
+    putStrLn "Enter k:"
+    k <- read <$> getLine
+    putStrLn "Enter size of A:"
+    n <- read <$> getLine
+    putStrLn "Enter elements of A:"
+    xs <- replicateM n (read <$> getLine)
+    putStrLn $ "The solution is " <> show (solve k xs) <> "."
+\end{minted}
+\end{solution}
+
+\end{parts}

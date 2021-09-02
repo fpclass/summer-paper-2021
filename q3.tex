@@ -1,0 +1,143 @@
+
+%%% Question 3 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+\question This question is about user-defined types and type classes. You may \textbf{not} make use of GHC extensions such as \texttt{\small DeriveFunctor}.
+\begin{parts}
+    \part Consider the following data type:
+\begin{minted}{haskell}
+data Layout a = Element a  
+              | Vertical (Layout a) (Layout a)
+              | Horizontal (Layout a) (Layout a)
+\end{minted}
+    The intuition here is that a layout consists of elements which can be composed vertically or horizontally.
+    \begin{subparts}
+        \subpart[4] The \haskellIn{Layout} type is a functor. Define a suitable instance of the \haskellIn{Functor} type class for it. Your instance should obey the functor laws, but you do \emph{not} need to prove this. \droppoints 
+        
+        \begin{solution}
+            \emph{Application.} 4 marks for the definition.
+\begin{minted}{haskell}
+instance Functor Layout where
+    fmap f (Element a) = Element (f a)
+    fmap f (Vertical x y) = 
+        Vertical (fmap f x) (fmap f y)
+    fmap f (Horizontal x y) = 
+        Horizontal (fmap f x) (fmap f y) 
+\end{minted}
+        \end{solution}
+
+        \subpart[4] The \haskellIn{Layout} type is foldable. Define a suitable instance of the \haskellIn{Foldable} type class for it. \droppoints
+
+        \begin{solution}
+            \emph{Application.} 4 marks for the definition.
+\begin{minted}{haskell}
+instance Foldable Layout where
+    foldr f z (Element a) = f a z
+    foldr f z (Vertical x y) = 
+        foldr f (foldr f z y) x
+    foldr f z (Horizontal x y) = 
+        foldr f (foldr f z y) x 
+\end{minted}
+        \end{solution}
+    \end{subparts}
+
+    \part Consider the following definition: 
+\begin{minted}{haskell}
+example :: Layout (Sized Char)
+example = Vertical 
+    (Element (Sized (15,42) 'a'))
+    (Horizontal 
+      (Element (Sized (4,16) 'b')) 
+      (Element (Sized (23,8) 'c')))
+\end{minted}
+    
+    \begin{subparts}
+        \subpart[2] Define a suitable data type \haskellIn{Sized} so that the above definition is valid. \droppoints
+        
+        \begin{solution}
+            \emph{Application.}
+\begin{minted}{haskell}
+data Sized a = Sized (Int,Int) a
+\end{minted}
+        \end{solution}
+    
+        \subpart[4] Define a function 
+        \vspace*{0.2cm}
+        \begin{minted}{haskell}
+width :: Layout (Sized a) -> Int
+        \end{minted}
+        \vspace*{0.2cm}
+        which calculates the width of a layout. For example, \haskellIn{width example} should evaluate to \haskellIn{27}. The width of horizontally composed layouts is the sum of the widths of the sub-layouts and the width of vertically composed layout is the maximum width of the sub-layouts. \droppoints
+        
+        \begin{solution}
+            \emph{Application.} 
+\begin{minted}{haskell}
+width :: Layout (Sized a) -> Int
+width (Element (Sized (x,y) a)) = x 
+width (Vertical a b) = max (width a) (width b)
+width (Horizontal a b) = width a + width b
+\end{minted}
+        \end{solution}
+    
+        \subpart[4] Define a corresponding function
+        \vspace*{0.2cm}
+        \begin{minted}{haskell}
+height :: Layout (Sized a) -> Int
+        \end{minted}
+        \vspace*{0.2cm}
+        which calculates the height of a layout. For example, \haskellIn{height example} should evaluate to \haskellIn{58}. \droppoints
+        
+        \begin{solution}
+            \emph{Application.} 
+\begin{minted}{haskell}
+height :: Layout (Sized a) -> Int
+height (Element (Sized (x,y) a)) = y 
+height (Horizontal a b) = max (height a) (height b)
+height (Vertical a b) = height a + height b
+\end{minted}
+        \end{solution} 
+    
+        \subpart[7] Suppose that we wish to render a given layout to a surface that uses a coordinate system where the origin is the top left corner and that we need to know the top left coordinate of each element in a layout for this purpose. Define a function 
+        \vspace*{0.2cm}
+        \begin{minted}{haskell}
+pos :: Layout (Sized a) -> Layout (Sized (Int,Int))
+        \end{minted}
+        \vspace*{0.2cm}
+        which, for every element in the layout, calculates its absolute position and replaces its value with the calculated position. For example, \haskellIn{pos example} should evaluate to the following: \pagebreak
+\begin{minted}{haskell}
+Vertical (Element (Sized (15,42) (0,0)))
+  (Horizontal 
+    (Element (Sized (4,16) (0,42))) 
+    (Element (Sized (23,8) (4,42))))
+\end{minted}
+        If you require any helper functions or type class instances in addition to those already defined in earlier parts of this question, you should define those as well. \droppoints
+
+        \begin{solution}
+            \emph{Application. 1 mark for correct handling of Element. 3 marks for Vertical. 3 marks for Horizontal. 0 marks for no attempt.}
+\begin{minted}{haskell}
+instance Functor Sized where
+  fmap f (Sized dims x) = Sized dims (f x)
+
+adjust :: (Functor f, Functor g)
+       => (a -> b) -> f (g a) -> f (g b)
+adjust f = fmap (fmap f)
+
+pos :: Layout (Sized a) -> Layout (Sized (Int, Int))
+-- if we have a single element, 
+-- then it is at the origin
+pos (Element (Sized dims x)) = 
+  Element (Sized dims (0,0))
+-- in a vertical layout, b is located below
+-- a so that b's y position is a's height
+pos (Vertical a b) = 
+  Vertical a' (adjust (\(x,y) -> (x,y+height a')) b')
+  where a' = pos a 
+        b' = pos b
+-- in a horizontal layout, b is located to the
+-- right of a so that b's x position is a's width
+pos (Horizontal a b) = 
+  Horizontal a' (adjust (\(x,y) -> (x+width a',y)) b')
+  where a' = pos a 
+        b' = pos b
+\end{minted}
+        \end{solution}
+    \end{subparts}
+\end{parts}
